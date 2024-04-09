@@ -239,7 +239,7 @@ VkPhysicalDevice VulkanClass::findPhysicalDevice() {
 			requiredExtensions.erase(extension.extensionName);
 		}
 
-		if (!findQueueFamilies(device) || !requiredExtensions.empty() || properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || !checkSwapChainSupport(device)) {
+		if (!findQueueFamilies(device) || !requiredExtensions.empty() || properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || !(features.tessellationShader) || !checkSwapChainSupport(device)) {
 			continue;
 		}
 
@@ -278,7 +278,9 @@ void VulkanClass::createLogicalDevice() {
 	vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
 
 	VkPhysicalDeviceFeatures requiredFeatures{};
-	requiredFeatures.geometryShader = VK_TRUE;
+	requiredFeatures.tessellationShader = VK_TRUE;
+	requiredFeatures.fillModeNonSolid = VK_TRUE;
+	requiredFeatures.wideLines = VK_TRUE;
 
 	VkDeviceCreateInfo logicalDeviceCreateInfo{};
 
@@ -493,7 +495,7 @@ void VulkanClass::createGraphicsPipeline() {
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
-	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -518,8 +520,8 @@ void VulkanClass::createGraphicsPipeline() {
 	rasterInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterInfo.depthClampEnable = VK_FALSE;
 	rasterInfo.rasterizerDiscardEnable = VK_FALSE;
-	rasterInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterInfo.lineWidth = 1.0f;
+	rasterInfo.polygonMode = VK_POLYGON_MODE_LINE;
+	rasterInfo.lineWidth = 3.0f;
 	rasterInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterInfo.depthBiasEnable = VK_FALSE;
@@ -538,6 +540,10 @@ void VulkanClass::createGraphicsPipeline() {
 	colorBlendGlobal.attachmentCount = 1;
 	colorBlendGlobal.pAttachments = &colorBlend;
 
+	VkPipelineTessellationStateCreateInfo tessellationInfo{};
+	tessellationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+	tessellationInfo.patchControlPoints = 3;
+
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
@@ -552,6 +558,7 @@ void VulkanClass::createGraphicsPipeline() {
 	graphicsPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	graphicsPipelineInfo.stageCount = basicShader.shaderStageInfos.size();
 	graphicsPipelineInfo.pStages = basicShader.shaderStageInfos.data();
+	graphicsPipelineInfo.pTessellationState = &tessellationInfo;
 	graphicsPipelineInfo.pColorBlendState = &colorBlendGlobal;
 	graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
 	graphicsPipelineInfo.pInputAssemblyState = &inputAssemblyInfo;

@@ -3,16 +3,23 @@
   <ItemGroup>
     <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="VKConfig.cpp" />
+    <ClCompile Include="RTX.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="VKConfig.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader.frag">
+    <None Include="Shaders\shader.frag">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="shader.vert">
+    <None Include="Shaders\shader.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\shader.tesc">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\shader.tese">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

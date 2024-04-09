@@ -5,9 +5,13 @@ Shader::Shader(const std::string ShaderName, VkDevice device) {
 
     vertexShaderSource = readFile("./Shaders/" + ShaderName + "_vert.spv");
     fragmentShaderSource = readFile("./Shaders/" + ShaderName + "_frag.spv");
+    tessellationControlShaderSource = readFile("./Shaders/" + ShaderName + "_tesc.spv");
+    tessellationEvalShaderSource = readFile("./Shaders/" + ShaderName + "_tese.spv");
 
     vertexShader = createShaderModule(vertexShaderSource, device, ShaderName);
     fragmentShader = createShaderModule(fragmentShaderSource, device, ShaderName);
+    tessellationControlShader = createShaderModule(tessellationControlShaderSource, device, ShaderName);
+    tessellationEvalShader = createShaderModule(tessellationEvalShaderSource, device, ShaderName);
 
     this->device = device;
 
@@ -27,12 +31,30 @@ Shader::Shader(const std::string ShaderName, VkDevice device) {
 
     shaderStageInfos.push_back(fshaderInfo);
 
+    VkPipelineShaderStageCreateInfo tcshaderInfo{};
+    tcshaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    tcshaderInfo.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    tcshaderInfo.module = tessellationControlShader;
+    tcshaderInfo.pName = "main";
+
+    shaderStageInfos.push_back(tcshaderInfo);
+
+    VkPipelineShaderStageCreateInfo teshaderInfo{};
+    teshaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    teshaderInfo.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    teshaderInfo.module = tessellationEvalShader;
+    teshaderInfo.pName = "main";
+
+    shaderStageInfos.push_back(teshaderInfo);
+
 }
 
 Shader::~Shader() {
 
     vkDestroyShaderModule(device, vertexShader, nullptr);
     vkDestroyShaderModule(device, fragmentShader, nullptr);
+    vkDestroyShaderModule(device, tessellationControlShader, nullptr);
+    vkDestroyShaderModule(device, tessellationEvalShader, nullptr);
     
 }
 
