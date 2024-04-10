@@ -7,9 +7,23 @@
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include <vector>
 
 #include "Shaders.h"
+
+struct Transform {
+	glm::mat4 M;
+	glm::mat4 V;
+	glm::mat4 P;
+
+	glm::vec3 cameraPos;
+};
 
 struct QueueFamily {
 
@@ -33,6 +47,8 @@ struct SwapChain {
 	VkSurfaceFormatKHR format;
 	VkPresentModeKHR presentMode;
 	VkExtent2D extent;
+
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 
 	std::vector<VkImage> images;
 	std::vector<VkImageView> imageViews;
@@ -66,18 +82,32 @@ private:
 
 	SwapChain swapChain;
 
+	VkDescriptorSetLayout transformDescriptorSetLayout;
+	VkDescriptorPool uniformDescriptorPool;
+	std::vector<VkDescriptorSet> transformDescriptorSet;
+	VkDescriptorPool imguiDescriptorPool;
+
+	std::vector<VkBuffer> transformBuffer;
+	std::vector<VkDeviceMemory> transformBufferMemory;
+	std::vector<void*> transformBufferMap;
+
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
 	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
+	std::vector<VkCommandBuffer> commandBuffer;
 
 public:
 
-	VkSemaphore imageAvailableSemaphore;
-	VkSemaphore renderFinishedSempahore;
-	VkFence inFlightFence;
+	bool framebufferResized = false;
+
+	std::vector<VkSemaphore> imageAvailableSemaphore;
+	std::vector<VkSemaphore> renderFinishedSempahore;
+	std::vector<VkFence> inFlightFence;
+	VkFence imGuiFence;
+
+	Transform transform;
 
 	VulkanClass();
 	VulkanClass(GLFWwindow* win);
@@ -88,6 +118,8 @@ public:
 	bool findQueueFamilies(VkPhysicalDevice device);
 	bool checkSwapChainSupport(VkPhysicalDevice device);
 	VkDevice getLogicalDevice() { return logicalDevice; }
+	uint32_t getMaxFramesInFlight() { return swapChain.MAX_FRAMES_IN_FLIGHT; }
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void draw(uint32_t& imageIndex);
 
 	//void initVulkan();
@@ -98,15 +130,26 @@ public:
 
 	void createSwapChain();
 	void createImageViews();
+	void recreateSwapChain();
 
 	void createRenderPass();
+	void createDescriptorSetLayout();
+	void createDescriptorPools();
+	void createTransformBuffer(VkDeviceSize bufferSize);
+	void createTransformDescriptorSet();
+
+	void updateTransform();
+
 	void createGraphicsPipeline();
 	void createFramebuffers();
 
 	void createCommandPool();
 	void createCommandBuffer();
-	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t index, uint32_t currentFrame);
 
 	void createSyncObjects();
+
+	void initImGui();
+	void drawGui();
 
 };

@@ -67,6 +67,8 @@ VulkanClass::VulkanClass(GLFWwindow* win) {
 	createImageViews();
 
 	createRenderPass();
+	createDescriptorSetLayout();
+	createDescriptorPools();
 	createGraphicsPipeline();
 
 	createFramebuffers();
@@ -75,6 +77,8 @@ VulkanClass::VulkanClass(GLFWwindow* win) {
 	createCommandBuffer();
 
 	createSyncObjects();
+
+	//initImGui();
 
 }
 
@@ -89,15 +93,34 @@ VulkanClass::~VulkanClass() {
 
 	vkDestroySwapchainKHR(logicalDevice, swapChain.__swapChain, nullptr);
 
+	//vkDestroyDescriptorPool(logicalDevice, imguiDescriptorPool, nullptr);
+	//ImGui_ImplVulkan_Shutdown();
+
+	for (size_t i = 0; i < swapChain.MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroyBuffer(logicalDevice, transformBuffer[i], nullptr);
+		vkFreeMemory(logicalDevice, transformBufferMemory[i], nullptr);
+	}
+
+	vkDestroyDescriptorPool(logicalDevice, uniformDescriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(logicalDevice, transformDescriptorSetLayout, nullptr);
+
 	vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
 	vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
 
-	vkDestroySemaphore(logicalDevice, imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(logicalDevice, renderFinishedSempahore, nullptr);
-	vkDestroyFence(logicalDevice, inFlightFence, nullptr);
+	for (size_t i=0; i<swapChain.MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroySemaphore(logicalDevice, imageAvailableSemaphore[i], nullptr);
+		vkDestroySemaphore(logicalDevice, renderFinishedSempahore[i], nullptr);
+		vkDestroyFence(logicalDevice, inFlightFence[i], nullptr);
+	}
 
-	vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+	vkDestroyFence(logicalDevice, imGuiFence, nullptr);
+
+	for (size_t i=0; i<swapChain.MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer[i]);
+	}
 	vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
 
 	vkDestroyDevice(logicalDevice, nullptr);
@@ -481,6 +504,136 @@ void VulkanClass::createRenderPass() {
 
 }
 
+void VulkanClass::createDescriptorSetLayout() {
+
+	VkDescriptorSetLayoutBinding transformLayoutBinding{};
+	transformLayoutBinding.binding = 0;
+	transformLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	transformLayoutBinding.descriptorCount = 1;
+	transformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+
+	VkDescriptorSetLayoutCreateInfo transformLayoutInfo{};
+	transformLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	transformLayoutInfo.bindingCount = 1;
+	transformLayoutInfo.pBindings = &transformLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(logicalDevice, &transformLayoutInfo, nullptr, &transformDescriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create Transform Descriptor Set layout\n");
+	}
+}
+
+void VulkanClass::createDescriptorPools() {
+
+	VkDescriptorPoolSize poolSize{};
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = static_cast<uint32_t>(swapChain.MAX_FRAMES_IN_FLIGHT);
+
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = 1;
+	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.maxSets = static_cast<uint32_t>(swapChain.MAX_FRAMES_IN_FLIGHT);
+
+	if (vkCreateDescriptorPool(logicalDevice, &poolInfo, nullptr, &uniformDescriptorPool) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to Create Uniform Descriptor Pool\n");
+	}
+
+}
+
+uint32_t VulkanClass::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+
+	throw std::runtime_error("failed to find suitable memory type!");
+
+}
+
+void VulkanClass::createTransformBuffer(VkDeviceSize bufferSize) {
+
+	transformBuffer.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+	transformBufferMemory.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+	transformBufferMap.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < swapChain.MAX_FRAMES_IN_FLIGHT; i++) {
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = bufferSize;
+		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &transformBuffer[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed To create Transform Uniform Buffer\n");
+
+		VkMemoryRequirements memreq;
+		vkGetBufferMemoryRequirements(logicalDevice, transformBuffer[i], &memreq);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memreq.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memreq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		if (vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &transformBufferMemory[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to Allocate Transform Uniform Buffer Memory\n6");
+
+		vkBindBufferMemory(logicalDevice, transformBuffer[i], transformBufferMemory[i], 0);
+
+		vkMapMemory(logicalDevice, transformBufferMemory[i], 0, bufferSize, 0, &transformBufferMap[i]);
+	}
+
+}
+
+void VulkanClass::createTransformDescriptorSet() {
+
+	std::vector<VkDescriptorSetLayout> layouts(static_cast<uint32_t>(swapChain.MAX_FRAMES_IN_FLIGHT), transformDescriptorSetLayout);
+
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = uniformDescriptorPool;
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChain.MAX_FRAMES_IN_FLIGHT);
+	allocInfo.pSetLayouts = layouts.data();
+
+	transformDescriptorSet.resize(static_cast<uint32_t>(swapChain.MAX_FRAMES_IN_FLIGHT));
+
+	if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, transformDescriptorSet.data()) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to Create Transform Descriptor Set\n");
+	}
+
+	for (size_t i = 0; i < swapChain.MAX_FRAMES_IN_FLIGHT; i++) {
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = transformBuffer[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(transform);
+
+		VkWriteDescriptorSet transformWrite{};
+		transformWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		transformWrite.dstSet = transformDescriptorSet[i];
+		transformWrite.dstBinding = 0;
+		transformWrite.dstArrayElement = 0;
+		transformWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		transformWrite.descriptorCount = 1;
+		transformWrite.pBufferInfo = &bufferInfo;
+
+		vkUpdateDescriptorSets(logicalDevice, 1, &transformWrite, 0, nullptr);
+	}
+
+}
+
+void VulkanClass::updateTransform() {
+
+	for (size_t i = 0; i < swapChain.MAX_FRAMES_IN_FLIGHT; i++) {
+		memcpy(transformBufferMap[i], &transform, sizeof(transform));
+	}
+
+}
+
+
 void VulkanClass::createGraphicsPipeline() {
 
 	Shader basicShader("shader", logicalDevice);
@@ -510,6 +663,7 @@ void VulkanClass::createGraphicsPipeline() {
 	scissorRect.offset = { 0,0 };
 
 	VkPipelineViewportStateCreateInfo viewportStateInfo{};
+	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportStateInfo.scissorCount = 1;
 	viewportStateInfo.viewportCount = 1;
@@ -546,6 +700,8 @@ void VulkanClass::createGraphicsPipeline() {
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &transformDescriptorSetLayout;
 
 	if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("Failed To Create Pipeline Layout\n");
@@ -599,6 +755,36 @@ void VulkanClass::createFramebuffers() {
 
 }
 
+void VulkanClass::recreateSwapChain() {
+
+	int width, height;
+	glfwGetFramebufferSize(window, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(logicalDevice);
+
+	for (size_t i = 0; i < swapChain.framebuffers.size(); i++) {
+		vkDestroyFramebuffer(logicalDevice, swapChain.framebuffers[i], nullptr);
+	}
+	for (size_t i = 0; i < swapChain.imageViews.size(); i++) {
+		vkDestroyImageView(logicalDevice, swapChain.imageViews[i], nullptr);
+	}
+
+	vkDestroySwapchainKHR(logicalDevice, swapChain.__swapChain, nullptr);
+
+	if (!checkSwapChainSupport(physicalDevice)) {
+		throw std::runtime_error("SwapChain not Supported\n");
+	}
+
+	createSwapChain();
+	createImageViews();
+	createFramebuffers();
+
+}
+
 void VulkanClass::createCommandPool() {
 
 	VkCommandPoolCreateInfo commandPoolInfo{};
@@ -612,7 +798,7 @@ void VulkanClass::createCommandPool() {
 
 }
 
-void VulkanClass::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void VulkanClass::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t index, uint32_t currentFrame) {
 
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -624,7 +810,7 @@ void VulkanClass::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 	VkRenderPassBeginInfo renderPassBeginInfo{};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBeginInfo.renderPass = renderPass;
-	renderPassBeginInfo.framebuffer = swapChain.framebuffers[imageIndex];
+	renderPassBeginInfo.framebuffer = swapChain.framebuffers[index];
 	renderPassBeginInfo.renderArea.offset = { 0,0 };
 	renderPassBeginInfo.renderArea.extent = swapChain.extent;
 	VkClearValue clearColor = { {{0.2f, 0.3f, 0.3f, 1.0f}} };
@@ -649,7 +835,11 @@ void VulkanClass::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t im
 	scissorRect.offset = { 0,0 };
 	//vkCmdSetScissor(commandBuffer, 0, 1, &scissorRect);
 
-	vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+	//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &transformDescriptorSet[currentFrame], 0, 0);
+
+	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 
 	vkCmdEndRenderPass(commandBuffer);
 
@@ -667,8 +857,13 @@ void VulkanClass::createCommandBuffer() {
 	allocInfo.commandBufferCount = 1;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-	if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer) != VK_SUCCESS) {
-		throw std::runtime_error("Failed To Allocate Command Buffer\n");
+	commandBuffer.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i=0; i<swapChain.MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		if (vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer[i]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed To Allocate Command Buffer\n");
+		}
 	}
 
 }
@@ -683,37 +878,56 @@ void VulkanClass::createSyncObjects() {
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	if (vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
-		vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &renderFinishedSempahore) != VK_SUCCESS ||
-		vkCreateFence(logicalDevice, &fenceInfo, nullptr, &inFlightFence) != VK_SUCCESS) {
-		throw std::runtime_error("Failed To Create Sync Objects\n");
+	imageAvailableSemaphore.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSempahore.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+	inFlightFence.resize(swapChain.MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i=0; i<swapChain.MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		if (vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(logicalDevice, &semaphoreInfo, nullptr, &renderFinishedSempahore[i]) != VK_SUCCESS ||
+			vkCreateFence(logicalDevice, &fenceInfo, nullptr, &inFlightFence[i]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed To Create Sync Objects\n");
+		}
 	}
+
+	vkCreateFence(logicalDevice, &fenceInfo, nullptr, &imGuiFence);
 
 }
 
 void VulkanClass::draw(uint32_t& imageIndex) {
 
-	vkAcquireNextImageKHR(logicalDevice, swapChain.__swapChain, UINT32_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	uint32_t index;
 
-	vkResetCommandBuffer(commandBuffer, 0);
+	VkResult result = vkAcquireNextImageKHR(logicalDevice, swapChain.__swapChain, UINT32_MAX, imageAvailableSemaphore[imageIndex], VK_NULL_HANDLE, &index);
 
-	recordCommandBuffer(commandBuffer, imageIndex);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		recreateSwapChain();
+		std::cout << "NO WORK SUBMITTED\n";
+		return;
+	}
+
+	vkResetFences(logicalDevice, 1, &inFlightFence[imageIndex]);
+
+	vkResetCommandBuffer(commandBuffer[imageIndex], 0);
+
+	recordCommandBuffer(commandBuffer[imageIndex], index, imageIndex);
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	
-	VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
-	VkSemaphore signalSemaphores[] = { renderFinishedSempahore };
+	VkSemaphore waitSemaphores[] = { imageAvailableSemaphore[imageIndex]};
+	VkSemaphore signalSemaphores[] = { renderFinishedSempahore[imageIndex]};
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
+	submitInfo.pCommandBuffers = &commandBuffer[imageIndex];
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS) {
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence[imageIndex]) != VK_SUCCESS) {
 		throw std::runtime_error("Failed To Submit Draw Command\n");
 	}
 
@@ -725,8 +939,106 @@ void VulkanClass::draw(uint32_t& imageIndex) {
 	VkSwapchainKHR swapChains[] = { swapChain.__swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
-	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pImageIndices = &index;
 
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || framebufferResized) {
+		framebufferResized = false;
+		recreateSwapChain();
+		//std::cout<<"recreated swapchain\n";
+	}
+
+}
+
+void VulkanClass::initImGui() {
+
+	VkDescriptorPoolSize pool_sizes[] =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000;
+	pool_info.poolSizeCount = std::size(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+
+	if (vkCreateDescriptorPool(logicalDevice, &pool_info, nullptr, &imguiDescriptorPool) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to Create ImGui Descriptor Pool\n");
+	}
+
+	ImGui::CreateContext();
+
+	ImGui_ImplGlfw_InitForVulkan(window, false);
+
+	ImGui_ImplVulkan_InitInfo init_info = {};
+	init_info.Instance = instance;
+	init_info.PhysicalDevice = physicalDevice;
+	init_info.Device = logicalDevice;
+	init_info.Queue = graphicsQueue;
+	init_info.DescriptorPool = imguiDescriptorPool;
+	init_info.MinImageCount = 3;
+	init_info.ImageCount = 3;
+	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkCommandBuffer commandBuffer;
+	VkCommandBufferAllocateInfo imguiCmdBufferInfo{};
+	imguiCmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	imguiCmdBufferInfo.commandPool = commandPool;
+	imguiCmdBufferInfo.commandBufferCount = 1;
+	
+	vkAllocateCommandBuffers(logicalDevice, &imguiCmdBufferInfo, &commandBuffer);
+
+	ImGui_ImplVulkan_Init(&init_info, renderPass);
+
+	vkResetFences(logicalDevice, 1, &imGuiFence);
+	vkResetCommandBuffer(commandBuffer, 0);
+
+	VkCommandBufferBeginInfo cmdBeginInfo{};
+	cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &cmdBeginInfo);
+
+	ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo cmdinfo{};
+	cmdinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	cmdinfo.commandBufferCount = 1;
+	cmdinfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(graphicsQueue, 1, &cmdinfo, imGuiFence);
+
+	vkWaitForFences(logicalDevice, 1, &imGuiFence, true, UINT64_MAX);
+
+	// clear font textures from cpu data
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+}
+
+void VulkanClass::drawGui() {
+
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+
+	ImGui::NewFrame();
+
+	ImGui::ShowDemoWindow();
+
+	ImGui::Render();
 
 }

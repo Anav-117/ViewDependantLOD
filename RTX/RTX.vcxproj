@@ -71,11 +71,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)\include;$(SolutionDir)\imgui-master;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>$(SolutionDir)\include;$(SolutionDir)\imgui-master\backends;$(SolutionDir)\imgui-master;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>$(SolutionDir)\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)\include;$(SolutionDir)\imgui-master;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>$(SolutionDir)\include;$(SolutionDir)\imgui-master\backends;$(SolutionDir)\imgui-master;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>$(SolutionDir)\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -151,11 +151,26 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\imgui-master\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="..\imgui-master\backends\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="..\imgui-master\imgui.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_demo.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_draw.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_tables.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_widgets.cpp" />
     <ClCompile Include="RTX.cpp" />
     <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="VKConfig.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\imgui-master\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="..\imgui-master\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="..\imgui-master\imconfig.h" />
+    <ClInclude Include="..\imgui-master\imgui.h" />
+    <ClInclude Include="..\imgui-master\imgui_internal.h" />
+    <ClInclude Include="..\imgui-master\imstb_rectpack.h" />
+    <ClInclude Include="..\imgui-master\imstb_textedit.h" />
+    <ClInclude Include="..\imgui-master\imstb_truetype.h" />
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="VKConfig.h" />
   </ItemGroup>
