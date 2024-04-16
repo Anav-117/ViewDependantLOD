@@ -157,6 +157,15 @@
     <ClCompile Include="VKConfig.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\imgui-master\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="..\imgui-master\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="..\imgui-master\imconfig.h" />
+    <ClInclude Include="..\imgui-master\imgui.h" />
+    <ClInclude Include="..\imgui-master\imgui_internal.h" />
+    <ClInclude Include="..\imgui-master\imstb_rectpack.h" />
+    <ClInclude Include="..\imgui-master\imstb_textedit.h" />
+    <ClInclude Include="..\imgui-master\imstb_truetype.h" />
+    <ClInclude Include="..\include\tiny_obj_loader.h" />
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="VKConfig.h" />
   </ItemGroup>
