@@ -4,55 +4,10 @@
     <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="VKConfig.cpp" />
     <ClCompile Include="RTX.cpp" />
-    <ClCompile Include="..\imgui-master\imgui.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\imgui-master\imgui_demo.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\imgui-master\imgui_draw.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\imgui-master\imgui_tables.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\imgui-master\imgui_widgets.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\imgui-master\backends\imgui_impl_glfw.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\imgui-master\backends\imgui_impl_vulkan.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="VKConfig.h" />
-    <ClInclude Include="..\imgui-master\imgui.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\imconfig.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\imgui_internal.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\imstb_rectpack.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\imstb_textedit.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\imstb_truetype.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\backends\imgui_impl_glfw.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\imgui-master\backends\imgui_impl_vulkan.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\shader.frag">
@@ -71,9 +26,6 @@
   <ItemGroup>
     <Filter Include="Shaders">
       <UniqueIdentifier>{d62f85a0-b3a9-48f9-bf4c-ca9f93a34acf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="imgui">
-      <UniqueIdentifier>{2cb34891-0976-499a-9635-7b908ae33449}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

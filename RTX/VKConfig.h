@@ -10,9 +10,9 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
+//#include <imgui.h>
+//#include <imgui_impl_glfw.h>
+//#include <imgui_impl_vulkan.h>
 #include <vector>
 
 #include "Shaders.h"
@@ -149,7 +149,7 @@ public:
 
 	void createSyncObjects();
 
-	void initImGui();
-	void drawGui();
+	//void initImGui();
+	//void drawGui();
 
 };
