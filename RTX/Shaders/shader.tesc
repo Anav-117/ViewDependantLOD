@@ -16,8 +16,9 @@ void main()
 
 	//Pass-through: just copy input vertices to output
 	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+	vec3 patchCenter = (gl_in[0].gl_Position.xyz + gl_in[1].gl_Position.xyz + gl_in[2].gl_Position.xyz) / 3.0;
 
-	float dist = 100.0*exp(-length(gl_in[gl_InvocationID].gl_Position.xyz - transform.cameraPos));
+	float dist = 100.0*exp(-length(patchCenter - transform.cameraPos)* 0.5);
 
 	//set tessellation levels
 	gl_TessLevelOuter[0] = dist;

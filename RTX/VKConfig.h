@@ -25,6 +25,10 @@ struct Transform {
 	glm::vec3 cameraPos;
 };
 
+struct Vertex {
+	glm::vec3 pos;
+};
+
 struct QueueFamily {
 
 	uint32_t graphicsFamily;
@@ -91,6 +95,17 @@ private:
 	std::vector<VkDeviceMemory> transformBufferMemory;
 	std::vector<void*> transformBufferMap;
 
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+	
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+	void* vertexBufferMap;
+
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+	void* indexBufferMap;
+
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
@@ -109,6 +124,8 @@ public:
 
 	Transform transform;
 
+	const std::string MODEL_PATH = "models/sponza.obj";
+
 	VulkanClass();
 	VulkanClass(GLFWwindow* win);
 	~VulkanClass();
@@ -120,6 +137,7 @@ public:
 	VkDevice getLogicalDevice() { return logicalDevice; }
 	uint32_t getMaxFramesInFlight() { return swapChain.MAX_FRAMES_IN_FLIGHT; }
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 	void draw(uint32_t& imageIndex);
 
 	//void initVulkan();
@@ -148,6 +166,10 @@ public:
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t index, uint32_t currentFrame);
 
 	void createSyncObjects();
+
+	void loadModel();
+	void createVertexBuffer();
+	void createIndexBuffer();
 
 	void initImGui();
 	void drawGui();

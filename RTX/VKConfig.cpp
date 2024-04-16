@@ -4,6 +4,63 @@
 #include <iostream>
 #include <algorithm>
 #include <set>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
+//std::vector<Vertex> vertices = {
+//	{glm::vec3(0.5, -0.5, -0.0)},
+//	{glm::vec3(-0.5, 0.5, -0.0)},
+//	{glm::vec3(0.5, 0.5,  -0.0)},
+//
+//	{glm::vec3(-0.5, 0.5, -0.0)},
+//	{glm::vec3(0.5, -0.5, -0.0)},
+//	{glm::vec3(-0.5, -0.5, -0.0)},
+//
+//	//Back
+//	{glm::vec3(-0.5, 0.5, 0.5)},
+//	{glm::vec3(-0.5, -0.5, 0.5)},
+//	{glm::vec3(0.5, 0.5,  0.5)},
+//
+//	{glm::vec3(0.5, 0.5, 0.5)},
+//	{glm::vec3(-0.5, -0.5, 0.5)},
+//	{glm::vec3(0.5, -0.5, 0.5)},
+//
+//	//Top
+//	{glm::vec3(0.5, 0.5, 0.5)},
+//	{glm::vec3(-0.5, 0.5, 0.0)},
+//	{glm::vec3(-0.5, 0.5, 0.5)},
+//
+//	{glm::vec3(0.5, 0.5, 0.5)},
+//	{glm::vec3(0.5, 0.5, 0.0)},
+//	{glm::vec3(-0.5, 0.5, 0.0)},
+//
+//	//bottom
+//	{glm::vec3(0.5, -0.5, 0.5)},
+//	{glm::vec3(-0.5, -0.5, 0.5)},
+//	{glm::vec3(-0.5, -0.5, 0.0)},
+//
+//	{glm::vec3(0.5, -0.5, 0.5)},
+//	{glm::vec3(-0.5, -0.5, 0.0)},
+//	{glm::vec3(0.5, -0.5, 0.0)},
+//
+//	//Right
+//	{glm::vec3(0.5, 0.5, 0.0)},
+//	{glm::vec3(0.5, 0.5, 0.5)},
+//	{glm::vec3(0.5, -0.5, 0.0)},
+//
+//	{glm::vec3(0.5, 0.5, 0.5)},
+//	{glm::vec3(0.5, -0.5, 0.5)},
+//	{glm::vec3(0.5, -0.5, 0.0)},
+//
+//	//Left
+//	{glm::vec3(-0.5, 0.5, 0.0)},
+//	{glm::vec3(-0.5, -0.5, 0.5)},
+//	{glm::vec3(-0.5, 0.5, 0.5)},
+//
+//	{glm::vec3(-0.5, 0.5, 0.0)},
+//	{glm::vec3(-0.5, -0.5, -0.0)},
+//	{glm::vec3(-0.5, -0.5, 0.5)}
+//};
 
 std::vector<const char*> VulkanClass::getRequiredExtensions() {
 
@@ -66,6 +123,8 @@ VulkanClass::VulkanClass(GLFWwindow* win) {
 	createSwapChain();
 	createImageViews();
 
+	loadModel();
+
 	createRenderPass();
 	createDescriptorSetLayout();
 	createDescriptorPools();
@@ -75,6 +134,9 @@ VulkanClass::VulkanClass(GLFWwindow* win) {
 
 	createCommandPool();
 	createCommandBuffer();
+
+	createVertexBuffer();
+	//createIndexBuffer();
 
 	createSyncObjects();
 
@@ -92,6 +154,9 @@ VulkanClass::~VulkanClass() {
 	}
 
 	vkDestroySwapchainKHR(logicalDevice, swapChain.__swapChain, nullptr);
+
+	vkDestroyBuffer(logicalDevice, vertexBuffer, nullptr);
+	vkFreeMemory(logicalDevice, vertexBufferMemory, nullptr);
 
 	//vkDestroyDescriptorPool(logicalDevice, imguiDescriptorPool, nullptr);
 	//ImGui_ImplVulkan_Shutdown();
@@ -638,12 +703,23 @@ void VulkanClass::createGraphicsPipeline() {
 
 	Shader basicShader("shader", logicalDevice);
 
+	VkVertexInputBindingDescription vertexBindingInfo{};
+	vertexBindingInfo.binding = 0;
+	vertexBindingInfo.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	vertexBindingInfo.stride = sizeof(Vertex);
+
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions(1);
+	attributeDescriptions[0].binding = 0;
+	attributeDescriptions[0].location = 0;
+	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount = 1;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	vertexInputInfo.pVertexBindingDescriptions = &vertexBindingInfo;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 	inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -677,7 +753,7 @@ void VulkanClass::createGraphicsPipeline() {
 	rasterInfo.polygonMode = VK_POLYGON_MODE_LINE;
 	rasterInfo.lineWidth = 3.0f;
 	rasterInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterInfo.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisampleInfo{};
@@ -837,9 +913,15 @@ void VulkanClass::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t in
 
 	//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 
+	VkBuffer vertexBuffers[] = { vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	//vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &transformDescriptorSet[currentFrame], 0, 0);
 
-	vkCmdDraw(commandBuffer, 36, 1, 0, 0);
+	vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0);
 
 	vkCmdEndRenderPass(commandBuffer);
 
@@ -1040,5 +1122,162 @@ void VulkanClass::drawGui() {
 	ImGui::ShowDemoWindow();
 
 	ImGui::Render();
+
+}
+
+void VulkanClass::loadModel() {
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+		std::cout << warn + err << "\n";
+		throw std::runtime_error(warn + err);
+	}
+
+	for (const auto& shape : shapes) {
+		for (const auto& index : shape.mesh.indices) {
+			Vertex vertex{};
+
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				-attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
+
+			vertices.push_back(vertex);
+			indices.push_back(indices.size());
+		}
+	}
+
+}
+
+void VulkanClass::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = commandPool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkBufferCopy copyRegion{};
+	copyRegion.size = size;
+	copyRegion.srcOffset = 0;
+	copyRegion.dstOffset = 0;
+
+	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(graphicsQueue);
+
+	vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+
+}
+
+void VulkanClass::createVertexBuffer() {
+
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.size = sizeof(Vertex) * vertices.size();
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to Create Vertex Buffer\n");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(logicalDevice, vertexBuffer, &memRequirements);
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &vertexBufferMemory);
+
+	vkBindBufferMemory(logicalDevice, vertexBuffer, vertexBufferMemory, 0);
+
+	vkMapMemory(logicalDevice, vertexBufferMemory, 0, bufferInfo.size, 0, &vertexBufferMap);
+	memcpy(vertexBufferMap, vertices.data(), (size_t)bufferInfo.size);
+	vkUnmapMemory(logicalDevice, vertexBufferMemory);
+
+}
+
+void VulkanClass::createIndexBuffer() {
+
+	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferInfo.size = bufferSize;
+
+	vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &stagingBuffer);
+
+	VkMemoryRequirements memReq;
+	vkGetBufferMemoryRequirements(logicalDevice, stagingBuffer, &memReq);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memReq.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &stagingBufferMemory);
+
+	vkBindBufferMemory(logicalDevice, stagingBuffer, stagingBufferMemory, 0);
+
+	void* data;
+	vkMapMemory(logicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(logicalDevice, stagingBufferMemory);
+
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	bufferInfo.size = bufferSize;
+
+	vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &indexBuffer);
+
+	vkGetBufferMemoryRequirements(logicalDevice, indexBuffer, &memReq);
+
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memReq.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &indexBufferMemory);
+
+	vkBindBufferMemory(logicalDevice, indexBuffer, indexBufferMemory, 0);
+
+
+	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+	vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
 
 }

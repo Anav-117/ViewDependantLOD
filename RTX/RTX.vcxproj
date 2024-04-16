@@ -171,6 +171,7 @@
     <ClInclude Include="..\imgui-master\imstb_rectpack.h" />
     <ClInclude Include="..\imgui-master\imstb_textedit.h" />
     <ClInclude Include="..\imgui-master\imstb_truetype.h" />
+    <ClInclude Include="..\include\tiny_obj_loader.h" />
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="VKConfig.h" />
   </ItemGroup>
