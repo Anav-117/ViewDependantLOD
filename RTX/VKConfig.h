@@ -171,7 +171,7 @@ public:
 	void createVertexBuffer();
 	void createIndexBuffer();
 
-	void initImGui();
-	void drawGui();
+	/*void initImGui();
+	void drawGui();*/
 
 };
