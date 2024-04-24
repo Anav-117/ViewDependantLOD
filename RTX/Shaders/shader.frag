@@ -9,6 +9,7 @@ layout(binding=0) uniform Transform {
     mat4 V;
     mat4 P;
 	vec3 cameraPos;
+    int lightingModel;
 } transform;
 
 layout(location = 0) out vec4 outColor;
@@ -93,10 +94,23 @@ vec3 ward() {
 
 void main() {
 
-    //vec3 color = orrenNayar();
-    //vec3 color = minneart();
-    //vec3 color = banks();
-    vec3 color = ward();
+    vec3 color;
+
+    if (transform.lightingModel == 0) {
+        color = max(0.00001, dot(normalize(lightPos - pos), normalize(normal))) * vec3(1.0);
+    }
+    else if (transform.lightingModel == 1) {
+        color = orrenNayar();
+    }
+    else if (transform.lightingModel == 2) {
+        color = minneart();
+    }
+    else if (transform.lightingModel == 3) {
+        color = banks();
+    }
+    else if (transform.lightingModel == 4) {
+        color = ward();
+    }
 
     
     outColor = vec4(color, 1.0);

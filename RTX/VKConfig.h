@@ -23,6 +23,8 @@ struct Transform {
 	glm::mat4 P;
 
 	glm::vec3 cameraPos;
+
+	int lightingModel = 0;
 };
 
 struct Vertex {
@@ -129,7 +131,7 @@ public:
 
 	Transform transform;
 
-	const std::string MODEL_PATH = "models/sponza.obj";
+	const std::string MODEL_PATH = "models/bunny.obj";
 
 	VulkanClass();
 	VulkanClass(GLFWwindow* win);
