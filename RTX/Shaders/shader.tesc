@@ -4,6 +4,12 @@ layout (vertices = 3) out;  //number of output verts of the tess. control shader
 layout(location = 0) in vec3 inColor[];
 layout(location = 0) out vec3 outColor[];
 
+layout(location = 1) in vec3 inPos[];
+layout(location = 1) out vec3 outPos[];
+
+layout(location = 2) in vec3 inNorm[];
+layout(location = 2) out vec3 outNorm[];
+
 layout(binding=0) uniform Transform {
     mat4 M;
     mat4 V;
@@ -30,4 +36,6 @@ void main()
 	//gl_TessLevelInner[1] = 2.0;
 
 	outColor[gl_InvocationID] = inColor[gl_InvocationID];
+	outPos[gl_InvocationID] = inPos[gl_InvocationID];
+	outNorm[gl_InvocationID] = inNorm[gl_InvocationID];
 }

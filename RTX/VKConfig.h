@@ -27,6 +27,7 @@ struct Transform {
 
 struct Vertex {
 	glm::vec3 pos;
+	glm::vec3 normal;
 };
 
 struct QueueFamily {
@@ -113,6 +114,10 @@ private:
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffer;
 
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
+
 public:
 
 	bool framebufferResized = false;
@@ -138,6 +143,14 @@ public:
 	uint32_t getMaxFramesInFlight() { return swapChain.MAX_FRAMES_IN_FLIGHT; }
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+	VkCommandBuffer beginSingleTimeCommands();
+	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	bool hasStencilComponent(VkFormat format);
 	void draw(uint32_t& imageIndex);
 
 	//void initVulkan();
@@ -170,6 +183,8 @@ public:
 	void loadModel();
 	void createVertexBuffer();
 	void createIndexBuffer();
+
+	void createDepthResources();
 
 	/*void initImGui();
 	void drawGui();*/
