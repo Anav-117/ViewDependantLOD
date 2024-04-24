@@ -10,6 +10,9 @@ layout(location = 1) out vec3 outPos[];
 layout(location = 2) in vec3 inNorm[];
 layout(location = 2) out vec3 outNorm[];
 
+layout(location = 3) in vec2 inTexCoord[];
+layout(location = 3) out vec2 outTexCoord[];
+
 layout(binding=0) uniform Transform {
     mat4 M;
     mat4 V;
@@ -38,4 +41,5 @@ void main()
 	outColor[gl_InvocationID] = inColor[gl_InvocationID];
 	outPos[gl_InvocationID] = inPos[gl_InvocationID];
 	outNorm[gl_InvocationID] = inNorm[gl_InvocationID];
+	outTexCoord[gl_InvocationID] = inTexCoord[gl_InvocationID];
 }

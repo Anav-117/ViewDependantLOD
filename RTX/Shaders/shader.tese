@@ -11,6 +11,9 @@ layout(location = 1) out vec3 outPos;
 layout(location = 2) in vec3 inNorm[];
 layout(location = 2) out vec3 outNorm;
 
+layout(location = 3) in vec2 inTexCoord[];
+layout(location = 3) out vec2 outTexCoord;
+
 layout(binding=0) uniform Transform {
     mat4 M;
     mat4 V;
@@ -61,5 +64,7 @@ void main()
 	outPos = (transform.M * p).xyz;
 
 	outNorm = gl_TessCoord.x * inNorm[0] + gl_TessCoord.y * inNorm[1] + gl_TessCoord.z * inNorm[2];
+
+	outTexCoord = gl_TessCoord.x * inTexCoord[0] + gl_TessCoord.y * inTexCoord[1] + gl_TessCoord.z * inTexCoord[2];
 
 }

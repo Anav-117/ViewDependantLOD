@@ -2,10 +2,12 @@
 
 layout(location = 0) in vec3 pos_attrib;
 layout(location = 1) in vec3 normal_attrib;
+layout(location = 2) in vec2 texCoord_attrib;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec3 pos_w;
 layout(location = 2) out vec3 normal_w;
+layout(location = 3) out vec2 texCoord;
 
 vec3 colors[3] = vec3[](
     vec3(1.0, 0.0, 0.0),
@@ -21,8 +23,10 @@ layout(binding=0) uniform Transform {
 } transform;
 
 void main() {
-    gl_Position = transform.P*transform.V*transform.M*vec4(pos_attrib, 1.0);
+    //gl_Position = transform.P*transform.V*transform.M*vec4(pos_attrib, 1.0);
+    gl_Position = vec4(pos_attrib, 1.0);
     pos_w = (transform.M * vec4(pos_attrib, 1.0f)).xyz;
     normal_w = (transform.M * vec4(normal_attrib, 1.0f)).xyz;
+    texCoord = texCoord_attrib;
     fragColor = colors[int(gl_VertexIndex) % 3];
 }

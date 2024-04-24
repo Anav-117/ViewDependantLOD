@@ -3,6 +3,7 @@
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 pos;
 layout(location = 2) in vec3 normal;
+layout(location = 3) in vec2 texCoord;
 
 layout(binding=0) uniform Transform {
     mat4 M;
@@ -12,9 +13,11 @@ layout(binding=0) uniform Transform {
     int lightingModel;
 } transform;
 
+layout(set = 1, binding = 0) uniform sampler2D tex;
+
 layout(location = 0) out vec4 outColor;
 
-vec3 lightPos = vec3(0.0, 20.0, 0.0);
+vec3 lightPos = vec3(10.0, 0.0, 10.0);
 
 const float pi = 3.141592653589793238462643;
 
@@ -37,7 +40,7 @@ vec3 orrenNayar() {
 
     oren_nayar_s /= mix(max(clamp(ndotl, 0.0, 1.0), clamp(ndotv, 0.0, 1.0)), 1, step(oren_nayar_s, 0));
 
-    vec3 diffuseColor = vec3(1.0);
+    vec3 diffuseColor = texture(tex, texCoord).rgb;
 
     return clamp(ndotl, 0.0, 1.0) * (on.x + diffuseColor * on.y + on.z * oren_nayar_s) * diffuseColor;
 
@@ -48,9 +51,9 @@ vec3 minneart() {
     float ndotl = max(0, dot(normalize(lightPos - pos), normalize(normal)));
     float ndotv = max(0, dot(normalize(transform.cameraPos - pos), normalize(normal)));
 
-    float roughness = 0.9;
+    float roughness = 0.3;
 
-    return clamp(ndotl * pow(ndotl*ndotv, roughness), 0.0, 1.0) * vec3(1.0);
+    return clamp(ndotl * pow(ndotl*ndotv, roughness), 0.0, 1.0) * vec3(0.1) + ndotl * texture(tex, texCoord).rgb;
 
 }
 
@@ -60,10 +63,10 @@ vec3 banks() {
     float ldott = max(0, dot(normalize(lightPos - pos), normalize(tangent)));
     float vdott = max(0, dot(normalize(transform.cameraPos - pos), normalize(tangent)));
 
-    float roughness = 0.5;
+    float roughness = 0.2;
 
-    vec3 diffuse = sqrt(1 - pow(max(ldott, 0.0), 2)) * vec3(0.0);
-    vec3 specular = pow(sqrt(1 - pow(max(ldott, 0.0), 2)) * sqrt(1 - pow(max(vdott, 0.0), 2)) - ldott*vdott, 2.0) * vec3(1.0);
+    vec3 diffuse = sqrt(1 - pow(max(ldott, 0.0), 2)) * texture(tex, texCoord).rgb;
+    vec3 specular = pow(sqrt(1 - pow(max(ldott, 0.0), 2)) * sqrt(1 - pow(max(vdott, 0.0), 2)) - ldott*vdott, 2.0) * vec3(0.1);
 
     return diffuse+specular;
 
@@ -86,9 +89,9 @@ vec3 ward() {
 
     float gamma = acos(dot(h, normalize(normal)));
 
-    vec3 specular = exp(-1*pow(tan(gamma), 2.0) * (pow(cos(phi), 2.0)/r1_sqr + pow(sin(phi), 2.0)/r2_sqr)) / (4 * pi * roughness1*roughness2 * sqrt(ndotl*ndotv)) * vec3(1.0);
+    vec3 specular = exp(-1*pow(tan(gamma), 2.0) * (pow(cos(phi), 2.0)/r1_sqr + pow(sin(phi), 2.0)/r2_sqr)) / (4 * pi * roughness1*roughness2 * sqrt(ndotl*ndotv)) * vec3(0.1);
 
-    return specular;
+    return specular + ndotl*texture(tex, texCoord).rgb;
 
 }
 
@@ -97,7 +100,7 @@ void main() {
     vec3 color;
 
     if (transform.lightingModel == 0) {
-        color = max(0.00001, dot(normalize(lightPos - pos), normalize(normal))) * vec3(1.0);
+        color = max(0.00001, dot(normalize(lightPos - pos), normalize(normal))) * texture(tex, texCoord).rgb;
     }
     else if (transform.lightingModel == 1) {
         color = orrenNayar();
@@ -111,7 +114,8 @@ void main() {
     else if (transform.lightingModel == 4) {
         color = ward();
     }
-
     
     outColor = vec4(color, 1.0);
+
+    //outColor = vec4(fragColor, 1.0);
 }

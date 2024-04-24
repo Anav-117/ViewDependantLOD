@@ -30,6 +30,7 @@ struct Transform {
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 normal;
+	glm::vec2 texCoord;
 };
 
 struct QueueFamily {
@@ -92,7 +93,6 @@ private:
 	VkDescriptorSetLayout transformDescriptorSetLayout;
 	VkDescriptorPool uniformDescriptorPool;
 	std::vector<VkDescriptorSet> transformDescriptorSet;
-	VkDescriptorPool imguiDescriptorPool;
 
 	std::vector<VkBuffer> transformBuffer;
 	std::vector<VkDeviceMemory> transformBufferMemory;
@@ -120,6 +120,14 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	std::vector<VkImage> textureImage;
+	std::vector<VkDeviceMemory> textureImageMemory;
+	std::vector<VkImageView> textureImageView;
+	std::vector<VkSampler> textureSampler;
+
+	VkDescriptorSetLayout samplerDescriptorSetLayout;
+	std::vector<VkDescriptorSet> samplerDescriptorSet;
+
 public:
 
 	bool framebufferResized = false;
@@ -131,7 +139,9 @@ public:
 
 	Transform transform;
 
-	const std::string MODEL_PATH = "models/bunny.obj";
+	const std::string MODEL_PATH = "models/viking_room.obj";
+	std::vector<std::string> TEXTURE_PATHS = { "models/viking_room.png" };
+	const int NUM_TEXTURES = 1;
 
 	VulkanClass();
 	VulkanClass(GLFWwindow* win);
@@ -153,6 +163,7 @@ public:
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	bool hasStencilComponent(VkFormat format);
+	VkImageView createImageView(VkImage image, VkFormat format);
 	void draw(uint32_t& imageIndex);
 
 	//void initVulkan();
@@ -185,6 +196,9 @@ public:
 	void loadModel();
 	void createVertexBuffer();
 	void createIndexBuffer();
+
+	void loadTextures();
+	void createSamplerDescriptorSet();
 
 	void createDepthResources();
 
